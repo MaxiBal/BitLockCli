@@ -71,6 +71,11 @@ namespace BitLockCli.Security
             Thread.Sleep((int)TimeTillDeath);
         }
 
+        /// <summary>
+        /// Gets all files from a List&lt;string&gt; of files and directories
+        /// </summary>
+        /// <param name="input">A list of files and directories</param>
+        /// <returns>A List of all files found</returns>
         private List<string> GetAllFiles(List<string> input)
         {
             List<string> filesList = new List<string>();
@@ -90,6 +95,11 @@ namespace BitLockCli.Security
             return filesList;
         }
 
+        /// <summary>
+        /// Get all files from a directory recursively
+        /// </summary>
+        /// <param name="directory">The starting directory</param>
+        /// <returns>A List of all the files found in every sub-directory of <paramref name="directory"/></returns>
         private List<string> GetRecursiveFiles(string directory)
         {
             List<string> files = new List<string>(Directory.GetFiles(directory));
