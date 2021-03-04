@@ -12,7 +12,7 @@ namespace BitLockCli.Security
     /// <summary>
     /// Locks and unlocks a file using a password
     /// </summary>
-    public class Locker : IDisposable
+    public sealed class Locker : IDisposable
     {
         // a SecureString with the file's password
         private readonly SecureString Password;
@@ -42,15 +42,17 @@ namespace BitLockCli.Security
         public Locker(List<string> file, long timeTillDeath)
         {
             TimeTillDeath = timeTillDeath;
-            Files = file;
+            Files = GetAllFiles(file);
             Password = GetPassword.GetPasswordFromCMD();
             // start new line from GetPasswordFromCMD()
             Console.WriteLine();
+
 
             
             for (int i = 0; i < file.Count(); i++)
             {
                 var f = file[i];
+
                 // if the file is already locked
                 if (Path.GetExtension(f) == ".lock")
                 {
@@ -68,6 +70,38 @@ namespace BitLockCli.Security
             // wait until timer dies
             Thread.Sleep((int)TimeTillDeath);
         }
+
+        private List<string> GetAllFiles(List<string> input)
+        {
+            List<string> filesList = new List<string>();
+
+            foreach (string singleItem in input)
+            {
+                if (Directory.Exists(singleItem))
+                {
+                    filesList.AddRange(GetRecursiveFiles(singleItem));
+                }
+                else
+                {
+                    filesList.Add(singleItem);
+                }
+            }
+
+            return filesList;
+        }
+
+        private List<string> GetRecursiveFiles(string directory)
+        {
+            List<string> files = new List<string>(Directory.GetFiles(directory));
+            foreach (string dir in Directory.GetDirectories(directory))
+            {
+                files.AddRange(GetRecursiveFiles(dir));
+            }
+
+            return files;
+        }
+
+        // NOTE: this shares the same code as UnlockFile, but it improves readability when calling the functions.
 
         /// <summary>
         /// Locks a file using the prompted password as a key
