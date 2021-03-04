@@ -9,9 +9,14 @@ An open-source CLI for Bitlocker written in c#.
 ## Usage
 
 ```bash
-bitlockcli <file> <time>
+bitlockcli [files] -t <time>
 ```
 
-file - the file you want to lock/unlock.   
+file - the files you want to lock/unlock separated by a single space.   
 
-time - the amount of time (in seconds) until the file will lock automatically.  Defaults to 5 minutes.
+time - the amount of time (in seconds) until the file will lock automatically.  Defaults to 5 minutes.   
+
+Example:   
+```bash
+bitlockcli testing1.txt testing2.txt
+```

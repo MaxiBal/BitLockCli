@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Security.Cryptography;
+using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -20,8 +21,8 @@ namespace BitLockCli.Security
         // this prevents forgetting the file is unlocked and leaving sensitive data open
         private readonly long TimeTillDeath;
 
-        // the file to encrypt
-        private readonly string File;
+        // the files to encrypt
+        private readonly List<string> Files;
 
         // salt has to be static and can be re-used
         // this prevents against Rainbow Table attacks
@@ -38,36 +39,41 @@ namespace BitLockCli.Security
         /// </summary>
         /// <param name="file">The file to lock/unlock</param>
         /// <param name="timeTillDeath">the time until the file automatically locks itself</param>
-        public Locker(string file, long timeTillDeath)
+        public Locker(List<string> file, long timeTillDeath)
         {
             TimeTillDeath = timeTillDeath;
-            File = file;
+            Files = file;
             Password = GetPassword.GetPasswordFromCMD();
             // start new line from GetPasswordFromCMD()
             Console.WriteLine();
 
-            // if the file is already locked
-            if (Path.GetExtension(file) == ".lock")
+            
+            for (int i = 0; i < file.Count(); i++)
             {
-                // let File be the original file name without .lock
-                File = file.Remove(file.Length - 5);
-                UnlockFile(File);
+                var f = file[i];
+                // if the file is already locked
+                if (Path.GetExtension(f) == ".lock")
+                {
+                    // let File be the original file name without .lock
+                    Files[i] = f.Remove(f.Length - 5);
+                    UnlockFile(f, Files[i]);
 
-                Console.WriteLine("File is unlocked.");
-
-                // in case of ctrl-c, lock the file
-                Console.CancelKeyPress += new ConsoleCancelEventHandler(HandleConsoleEnd);
-
-                // wait until timer dies
-                Thread.Sleep((int)TimeTillDeath);
+                    Console.WriteLine("File is unlocked.");
+                }
             }
+
+            // in case of ctrl-c, lock the file
+            Console.CancelKeyPress += new ConsoleCancelEventHandler(HandleConsoleEnd);
+
+            // wait until timer dies
+            Thread.Sleep((int)TimeTillDeath);
         }
 
         /// <summary>
         /// Locks a file using the prompted password as a key
         /// </summary>
         /// <param name="outfile">the new file location of the locked file</param>
-        private void LockFile(string outfile)
+        private void LockFile(string infile, string outfile)
         {
             AesManaged aes = new AesManaged();
             aes.BlockSize = aes.LegalBlockSizes[0].MaxSize;
@@ -82,19 +88,19 @@ namespace BitLockCli.Security
             using (FileStream destination = new FileStream(outfile, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 using CryptoStream cryptoStream = new CryptoStream(destination, transform, CryptoStreamMode.Write);
-                using FileStream source = new FileStream(File, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using FileStream source = new FileStream(infile, FileMode.Open, FileAccess.Read, FileShare.Read);
 
                 source.CopyTo(cryptoStream);
             }
 
-            System.IO.File.Delete(File);
+            File.Delete(infile);
         }
 
         /// <summary>
         /// Unlocks the file with the prompted password
         /// </summary>
         /// <param name="outfile">The file location where the unlocked file should be stored</param>
-        private void UnlockFile(string outfile)
+        private void UnlockFile(string infile, string outfile)
         {
             AesManaged aes = new AesManaged();
 
@@ -111,11 +117,11 @@ namespace BitLockCli.Security
             using (FileStream destination = new FileStream(outfile, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 using CryptoStream cryptoStream = new CryptoStream(destination, transform, CryptoStreamMode.Write);
-                using FileStream source = new FileStream(File + ".lock", FileMode.Open, FileAccess.Read, FileShare.Read);
+                using FileStream source = new FileStream(infile, FileMode.Open, FileAccess.Read, FileShare.Read);
                 source.CopyTo(cryptoStream);
             }
 
-            System.IO.File.Delete(File + ".lock");
+            File.Delete(infile);
         }
         
         /// <summary>
@@ -123,8 +129,12 @@ namespace BitLockCli.Security
         /// </summary>
         public void Dispose()
         {
-            LockFile(File + ".lock");
-            Console.WriteLine("Locked file successfully.");
+            foreach (string file in Files)
+            {
+                LockFile(file, file + ".lock");
+            }
+            
+            Console.WriteLine("Locked file(s) successfully.");
         }
 
         /// <summary>

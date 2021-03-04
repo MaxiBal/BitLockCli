@@ -1,37 +1,32 @@
 ﻿using BitLockCli.Security;
+using CommandLine;
 using System;
+using System.Collections.Generic;
 
 namespace BitLockCli
 {
+    public class BitLockCliOptions
+    {
+        [Value(0, Required = true)]
+        public IEnumerable<string> Files { get; set; }
+
+        [Option('t', "--time", Required = false, HelpText = "Time until automatic lockout (default 5 minutes)", Default = 300)]
+        public int Timeout { get; set; }
+    }
+
     public class Program
     {
-        private const string Usage = "Usage: bitlockcli <file> <time (optional)>";
         /// <summary>
         /// The entry point of the application
         /// </summary>
         /// <param name="args">Command line arguments</param>
         public static void Main(string[] args)
         {
-            if (args.Length == 0 || args.Length > 2)
+            Parser.Default.ParseArguments<BitLockCliOptions>(args).WithParsed(o =>
             {
-                Console.WriteLine(Usage);
-            }
-
-            // timeTillDeath defaults to 5 minutes
-            int timeTillDeath = 300 * 1000;
-
-            if (args.Length == 2)
-            {
-                try
-                {
-                    timeTillDeath = Convert.ToInt32(args[1]) * 1000;
-                } catch(Exception _)
-                {
-                    Console.WriteLine("<time> argument must be a number.");
-                }
-            }
-
-            using (_ = new Locker(args[0], timeTillDeath)) ;
+                // o.Timeout is mulitplied by 1000 to cvt it from milliseconds to seconds
+                using (_ = new Locker(new List<string>(o.Files), o.Timeout * 1000)) ;
+            });
         }
     }
 }
