@@ -6,7 +6,10 @@ namespace BitLockCli
     public class Program
     {
         private const string Usage = "Usage: bitlockcli <file> <time (optional)>";
-
+        /// <summary>
+        /// The entry point of the application
+        /// </summary>
+        /// <param name="args">Command line arguments</param>
         public static void Main(string[] args)
         {
             if (args.Length == 0 || args.Length > 2)
