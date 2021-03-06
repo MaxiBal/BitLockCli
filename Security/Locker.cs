@@ -47,8 +47,6 @@ namespace BitLockCli.Security
             // start new line from GetPasswordFromCMD()
             Console.WriteLine();
 
-
-            
             for (int i = 0; i < file.Count(); i++)
             {
                 var f = file[i];

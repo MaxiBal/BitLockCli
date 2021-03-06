@@ -7,10 +7,10 @@ namespace BitLockCli
 {
     public class BitLockCliOptions
     {
-        [Value(0, Required = true)]
+        [Value(0, Required = true, HelpText = "The files or directories to lock/unlock.", MetaName = "Items")]
         public IEnumerable<string> Files { get; set; }
 
-        [Option('t', "--time", Required = false, HelpText = "Time until automatic lockout (default 5 minutes)", Default = 300)]
+        [Option('t', "time", Required = false, HelpText = "Time until automatic lockout (default 5 minutes)", Default = 300)]
         public int Timeout { get; set; }
     }
 
