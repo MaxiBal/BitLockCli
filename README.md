@@ -49,7 +49,7 @@ bitlockcli testing1.txt --change
 From there, you will be prompted to enter 2 passwords: the first one is the previous password for the file, and the second one is the new password.   
 
 Example:
-```bash
+```
 bitlockcli testing1.txt --change
 Enter the file's password:
 ********
