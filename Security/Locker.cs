@@ -67,8 +67,6 @@ namespace BitLockCli.Security
                         File.Delete(Files[i]);
                         Environment.Exit(1);
                     }
-
-                    Console.WriteLine("File is unlocked.");
                 }
             }
 
@@ -210,6 +208,8 @@ namespace BitLockCli.Security
             }
 
             Password.Dispose();
+
+            Console.WriteLine();
 
             Console.WriteLine("Locked file(s) successfully.");
         }
