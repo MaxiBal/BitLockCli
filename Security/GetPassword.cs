@@ -11,9 +11,9 @@ namespace BitLockCli.Security
         /// Prompts the user for a password and hides it in the command line
         /// </summary>
         /// <returns>A SecureString with the password</returns>
-        public static SecureString GetPasswordFromCMD()
+        public static SecureString GetPasswordFromCMD(string askText = "Enter the file's password: ")
         {
-            Console.WriteLine("Enter the file's password: ");
+            Console.WriteLine(askText);
             var pass = new SecureString();
             ConsoleKey key;
             do

@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace BitLockCli.Security
 {
@@ -15,7 +16,7 @@ namespace BitLockCli.Security
     public sealed class Locker : IDisposable
     {
         // a SecureString with the file's password
-        private readonly SecureString Password;
+        private SecureString Password;
 
         // automatically lock the file after TimeTillDeath
         // this prevents forgetting the file is unlocked and leaving sensitive data open
@@ -39,7 +40,7 @@ namespace BitLockCli.Security
         /// </summary>
         /// <param name="file">The file to lock/unlock</param>
         /// <param name="timeTillDeath">the time until the file automatically locks itself</param>
-        public Locker(List<string> file, long timeTillDeath)
+        public Locker(List<string> file, long timeTillDeath, bool shouldChangePass = false)
         {
             TimeTillDeath = timeTillDeath;
             Files = GetAllFiles(file);
@@ -56,7 +57,16 @@ namespace BitLockCli.Security
                 {
                     // let File be the original file name without .lock
                     Files[i] = f.Remove(f.Length - 5);
-                    UnlockFile(f, Files[i]);
+                    try
+                    {
+                        UnlockFile(f, Files[i]);
+                    }
+                    catch(CryptographicException ce)
+                    {
+                        Console.WriteLine("Password is incorrect.");
+                        File.Delete(Files[i]);
+                        Environment.Exit(1);
+                    }
 
                     Console.WriteLine("File is unlocked.");
                 }
@@ -65,8 +75,15 @@ namespace BitLockCli.Security
             // in case of ctrl-c, lock the file
             Console.CancelKeyPress += new ConsoleCancelEventHandler(HandleConsoleEnd);
 
-            // wait until timer dies
-            Thread.Sleep((int)TimeTillDeath);
+            if (shouldChangePass)
+            {
+                ChangePassword();
+            }
+            else
+            {
+                // wait until timer dies
+                Thread.Sleep((int)TimeTillDeath);
+            }
         }
 
         /// <summary>
@@ -114,6 +131,7 @@ namespace BitLockCli.Security
         /// <summary>
         /// Locks a file using the prompted password as a key
         /// </summary>
+        /// <param name="infile">the file to read and encrypt the contents from</param>
         /// <param name="outfile">the new file location of the locked file</param>
         private void LockFile(string infile, string outfile)
         {
@@ -121,7 +139,7 @@ namespace BitLockCli.Security
             aes.BlockSize = aes.LegalBlockSizes[0].MaxSize;
             aes.KeySize = aes.LegalKeySizes[0].MaxSize;
             // NB: Rfc2898DeriveBytes initialization and subsequent calls to   GetBytes   must be eactly the same, including order, on both the encryption and decryption sides.
-            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(Password.ToString(), Salt, Iterations);
+            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(SecureStringToString(Password), Salt, Iterations);
             aes.Key = key.GetBytes(aes.KeySize / 8);
             aes.IV = key.GetBytes(aes.BlockSize / 8);
             aes.Mode = CipherMode.CBC;
@@ -141,6 +159,7 @@ namespace BitLockCli.Security
         /// <summary>
         /// Unlocks the file with the prompted password
         /// </summary>
+        /// <param name="infile">the file to read and decrypt the contents from</param>
         /// <param name="outfile">The file location where the unlocked file should be stored</param>
         private void UnlockFile(string infile, string outfile)
         {
@@ -150,7 +169,8 @@ namespace BitLockCli.Security
             aes.BlockSize = aes.LegalBlockSizes[0].MaxSize;
             aes.KeySize = aes.LegalKeySizes[0].MaxSize;
             // NB: Rfc2898DeriveBytes initialization and subsequent calls to   GetBytes   must be eactly the same, including order, on both the encryption and decryption sides.
-            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(Password.ToString(), Salt, Iterations);
+            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(SecureStringToString(Password), Salt, Iterations);
+
             aes.Key = key.GetBytes(aes.KeySize / 8);
             aes.IV = key.GetBytes(aes.BlockSize / 8);
             aes.Mode = CipherMode.CBC;
@@ -165,6 +185,19 @@ namespace BitLockCli.Security
 
             File.Delete(infile);
         }
+
+        /// <summary>
+        /// Changes the file/directory's password
+        /// </summary>
+        public void ChangePassword()
+        {
+            // Get new password
+            SecureString newPassword = GetPassword.GetPasswordFromCMD(askText : "Enter the new password: ");
+
+            Password.Clear();
+
+            Password = newPassword;
+        }
         
         /// <summary>
         /// Disposes the object and locks the file
@@ -175,7 +208,9 @@ namespace BitLockCli.Security
             {
                 LockFile(file, file + ".lock");
             }
-            
+
+            Password.Dispose();
+
             Console.WriteLine("Locked file(s) successfully.");
         }
 
@@ -187,6 +222,20 @@ namespace BitLockCli.Security
         private void HandleConsoleEnd(object sender, ConsoleCancelEventArgs eventArgs)
         {
             Dispose();
+        }
+
+        private string SecureStringToString(SecureString value)
+        {
+            IntPtr bstr = Marshal.SecureStringToBSTR(value);
+
+            try
+            {
+                return Marshal.PtrToStringBSTR(bstr);
+            }
+            finally
+            {
+                Marshal.FreeBSTR(bstr);
+            }
         }
     }
 }

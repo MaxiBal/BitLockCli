@@ -12,6 +12,9 @@ namespace BitLockCli
 
         [Option('t', "time", Required = false, HelpText = "Time until automatic lockout (default 5 minutes)", Default = 300)]
         public int Timeout { get; set; }
+
+        [Option("change", Required = false, HelpText = "Changing a file/directory's password.", Default = false)]
+        public bool ChangePassword { get; set; }
     }
 
     public class Program
@@ -25,7 +28,7 @@ namespace BitLockCli
             Parser.Default.ParseArguments<BitLockCliOptions>(args).WithParsed(o =>
             {
                 // o.Timeout is mulitplied by 1000 to cvt it from milliseconds to seconds
-                using (_ = new Locker(new List<string>(o.Files), o.Timeout * 1000)) ;
+                using (var locker = new Locker(new List<string>(o.Files), o.Timeout * 1000, o.ChangePassword)) ;
             });
         }
     }
