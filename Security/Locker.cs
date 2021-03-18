@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Runtime.InteropServices;
+using BitLockCli.Filesystem;
 
 namespace BitLockCli.Security
 {
@@ -43,7 +44,7 @@ namespace BitLockCli.Security
         public Locker(List<string> file, long timeTillDeath, bool shouldChangePass = false)
         {
             TimeTillDeath = timeTillDeath;
-            Files = GetAllFiles(file);
+            Files = GetAllFiles.GetAllFilesFromPaths(file);
             Password = GetPassword.GetPasswordFromCMD();
             // start new line from GetPasswordFromCMD()
             Console.WriteLine();
@@ -61,7 +62,7 @@ namespace BitLockCli.Security
                     {
                         UnlockFile(f, Files[i]);
                     }
-                    catch(CryptographicException ce)
+                    catch (CryptographicException)
                     {
                         Console.WriteLine("Password is incorrect.");
                         File.Delete(Files[i]);
@@ -84,46 +85,6 @@ namespace BitLockCli.Security
             }
         }
 
-        /// <summary>
-        /// Gets all files from a List&lt;string&gt; of files and directories
-        /// </summary>
-        /// <param name="input">A list of files and directories</param>
-        /// <returns>A List of all files found</returns>
-        private List<string> GetAllFiles(List<string> input)
-        {
-            List<string> filesList = new List<string>();
-
-            foreach (string singleItem in input)
-            {
-                if (Directory.Exists(singleItem))
-                {
-                    filesList.AddRange(GetRecursiveFiles(singleItem));
-                }
-                else
-                {
-                    filesList.Add(singleItem);
-                }
-            }
-
-            return filesList;
-        }
-
-        /// <summary>
-        /// Get all files from a directory recursively
-        /// </summary>
-        /// <param name="directory">The starting directory</param>
-        /// <returns>A List of all the files found in every sub-directory of <paramref name="directory"/></returns>
-        private List<string> GetRecursiveFiles(string directory)
-        {
-            List<string> files = new List<string>(Directory.GetFiles(directory));
-            foreach (string dir in Directory.GetDirectories(directory))
-            {
-                files.AddRange(GetRecursiveFiles(dir));
-            }
-
-            return files;
-        }
-
         // NOTE: this shares the same code as UnlockFile, but it improves readability when calling the functions.
 
         /// <summary>
@@ -137,7 +98,7 @@ namespace BitLockCli.Security
             aes.BlockSize = aes.LegalBlockSizes[0].MaxSize;
             aes.KeySize = aes.LegalKeySizes[0].MaxSize;
             // NB: Rfc2898DeriveBytes initialization and subsequent calls to   GetBytes   must be eactly the same, including order, on both the encryption and decryption sides.
-            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(SecureStringToString(Password), Salt, Iterations);
+            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(Password.ContentsToString(), Salt, Iterations);
             aes.Key = key.GetBytes(aes.KeySize / 8);
             aes.IV = key.GetBytes(aes.BlockSize / 8);
             aes.Mode = CipherMode.CBC;
@@ -167,7 +128,7 @@ namespace BitLockCli.Security
             aes.BlockSize = aes.LegalBlockSizes[0].MaxSize;
             aes.KeySize = aes.LegalKeySizes[0].MaxSize;
             // NB: Rfc2898DeriveBytes initialization and subsequent calls to   GetBytes   must be eactly the same, including order, on both the encryption and decryption sides.
-            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(SecureStringToString(Password), Salt, Iterations);
+            Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(Password.ContentsToString(), Salt, Iterations);
 
             aes.Key = key.GetBytes(aes.KeySize / 8);
             aes.IV = key.GetBytes(aes.BlockSize / 8);
@@ -222,20 +183,6 @@ namespace BitLockCli.Security
         private void HandleConsoleEnd(object sender, ConsoleCancelEventArgs eventArgs)
         {
             Dispose();
-        }
-
-        private string SecureStringToString(SecureString value)
-        {
-            IntPtr bstr = Marshal.SecureStringToBSTR(value);
-
-            try
-            {
-                return Marshal.PtrToStringBSTR(bstr);
-            }
-            finally
-            {
-                Marshal.FreeBSTR(bstr);
-            }
         }
     }
 }
